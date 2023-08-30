@@ -1,0 +1,23 @@
+trigger: none
+
+variables:
+  azureServiceConnection: 'Subscription_Connection'
+  resourceGroupName: 'EmailForwardingApi'
+  location: 'East US'
+
+pool: Azure Pipelines
+
+stages:
+  - stage: DeployApplicationInfrastructure
+    jobs:
+      - job: deploy_app_infra
+        steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az deployment group create \
+                --resource-group $(resourceGroupName) \
+                --template-file 'infra/main.bicep' \
