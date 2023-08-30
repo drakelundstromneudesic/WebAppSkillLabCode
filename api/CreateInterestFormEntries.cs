@@ -99,6 +99,11 @@ namespace Company.Function
                         else
                         {
                             interestFormSubmission.AddError("District not found by zip code");
+                            var errors = await emailSender.SendCountryOrDistrictNotFoundEmailAsync(interestFormSubmission);
+                            if (errors.Any())
+                            {
+                                interestFormSubmission.AddErrors(errors);
+                            }
                         }
 
                     }
@@ -123,6 +128,11 @@ namespace Company.Function
                         else
                         {
                             interestFormSubmission.AddError("country not found");
+                            var errors = await emailSender.SendCountryOrDistrictNotFoundEmailAsync(interestFormSubmission);
+                            if (errors.Any())
+                            {
+                                interestFormSubmission.AddErrors(errors);
+                            }
                         }
 
                     }
@@ -144,7 +154,7 @@ namespace Company.Function
                     // Handle error with initial database connection, or uncaught exception.  Log error and send email.
                     response.CountError++;
                     interestFormSubmission.AddError(e.Message);
-                    _loggingService.LogException(e, interestFormSubmission.ToString());
+                    _loggingService.LogException(e, JsonSerializer.Serialize(interestFormSubmission));
                     // try to handle sending email with errors 
                     try
                     {
@@ -153,7 +163,7 @@ namespace Company.Function
                     catch (Exception e2)
                     {
                         interestFormSubmission.AddError("failed to send email to notify of failure do to following exception:" + e2.Message);
-                        _loggingService.LogException(e2, interestFormSubmission.ToString());
+                        _loggingService.LogException(e2, JsonSerializer.Serialize(interestFormSubmission));
                     }
                     response.ErrorSubmissions.Add(new ErrorSubmission(interestFormSubmission.id, interestFormSubmission.Errors));
                 }

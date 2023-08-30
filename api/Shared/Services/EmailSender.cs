@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using Company.Models;
 using System.Globalization;
-using Org.BouncyCastle.Crypto.Engines;
+using System.Text.Json;
 
 namespace Company.Services
 {
@@ -23,7 +23,7 @@ namespace Company.Services
             _loggingService = loggingService;
         }
 
-        // This method generates an email and sends it to the district representative(s).  It return an empty list on success and errors on failure
+        // This method generates an email and sends it to the district representative(s) and the form submitter.  It return an empty list on success and errors on failure
         public async Task<List<string>> SendDistrictEmailAsync(List<string> districtEmailAddresses, List<string> districts, InterestFormSubmission interestFormSubmission)
         {
             try
@@ -32,7 +32,7 @@ namespace Company.Services
                 var districtEmailBody = DistrictEmailBodyGenerator(districts, interestFormSubmission);
                 var errors = await SendEmailAsync(districtEmailAddresses, subjectLine, districtEmailBody);
                 // generate and send email to form submitter
-                var returnEmailBody = ReturnEmailBodyGenerator(false, districts, interestFormSubmission);
+                var returnEmailBody = ReturnEmailBodyGenerator(true, false, districts, interestFormSubmission);
                 errors.AddRange(await SendEmailAsync(new List<string>() { interestFormSubmission.Email }, subjectLine, returnEmailBody));
                 return errors;
             }
@@ -42,7 +42,7 @@ namespace Company.Services
             }
         }
 
-        // This method generates an email and sends it to the country representative(s).  It return an empty list on success and errors on failure
+        // This method generates an email and sends it to the country representative(s) and the form submitter.  It return an empty list on success and errors on failure
         public async Task<List<string>> SendCountryEmailAsync(List<string> countryEmailAddresses, InterestFormSubmission interestFormSubmission)
         {
             try
@@ -51,7 +51,31 @@ namespace Company.Services
                 var countryEmailBody = CountryEmailBodyGenerator(interestFormSubmission);
                 var errors = await SendEmailAsync(countryEmailAddresses, subjectLine, countryEmailBody);
                 // generate and send email to form submitter
-                var returnEmailBody = ReturnEmailBodyGenerator(true, new List<string>(), interestFormSubmission);
+                var returnEmailBody = ReturnEmailBodyGenerator(true, true, new List<string>(), interestFormSubmission);
+                errors.AddRange(await SendEmailAsync(new List<string>() { interestFormSubmission.Email }, subjectLine, returnEmailBody));
+                return errors;
+            }
+            catch (Exception e)
+            {
+                return new List<string> { e.Message };
+            }
+        }
+
+        // This method generates an email and sends it to the default email address and the form submitter.  It return an empty list on success and errors on failure. 
+        public async Task<List<string>> SendCountryOrDistrictNotFoundEmailAsync(InterestFormSubmission interestFormSubmission)
+        {
+            try
+            {
+                // generate and send email to country representatives
+                var notFoundEmailBody = $@"<h3>There was not a district or country found for this submission.</h3>
+                <p>Please reach out to the student within a week.  If the database is missing needed information for a zip code or country, please update it.  If there was an error in filling out the form, please resumbit it correctly.</p>
+                {StudentInformationToHtml(interestFormSubmission)}
+                <h4>Here is the raw data from the submissions:</h4>
+                <p>{JsonSerializer.Serialize(interestFormSubmission)}</p>
+               ";
+                var errors = await SendEmailAsync(new List<string>() { _sendingAccountAddress }, "District or Country Not Found", notFoundEmailBody);
+                // generate and send email to form submitter
+                var returnEmailBody = ReturnEmailBodyGenerator(false, true, new List<string>(), interestFormSubmission);
                 errors.AddRange(await SendEmailAsync(new List<string>() { interestFormSubmission.Email }, subjectLine, returnEmailBody));
                 return errors;
             }
@@ -87,9 +111,9 @@ namespace Company.Services
         <p>We are not sure what districts this student is a part of, so this email is going to all districts present in this zip code.</p>";
                 }
             }
+            newBody += "<p>An interested person in your district has sumbitted a Rotary Youth Exchange contact form at <a href=\"https://studyabroadscholarships.org/\">studyabroadscholarships.org</a>. They have been informed of your district number and been told to expect a follow up within a couple of weeks.</p>";
             newBody += StudentInformationToHtml(interestFormSubmission);
-            newBody += @"<p> They have also been informed of your district number and been told to expect a follow up within a couple of weeks.</p>
-        <h4> If you have any questions, advice for the process, to add or remove email addresses for your district, or to get a list of previous submissions, please reach out to StudyAbroadScholarshipsWebsite@outlook.com.</h4>
+            newBody += @"<h4> If you have any questions, advice for the process, to add or remove email addresses for your district, or to get a list of previous submissions, please reach out to StudyAbroadScholarshipsWebsite@outlook.com.</h4>
         ";
             newBody += " <p>Thank you for your support of <a href=\"https://studyabroadscholarships.org/\">studyabroadscholarships.org</a>!</p>";
             return newBody;
@@ -100,37 +124,41 @@ namespace Company.Services
         {
             TextInfo ti = CultureInfo.CurrentCulture.TextInfo;
             var newBody = $@"<h4>Hello RYE {ti.ToTitleCase(interestFormSubmission.CountryOfResidence)} Representatives,</h4>";
+            newBody += "<p>An interested person in your country has sumbitted a Rotary Youth Exchange contact form at <a href=\"https://studyabroadscholarships.org/\">studyabroadscholarships.org</a>. They have been told to expect a follow up within a couple of weeks.</p>";
             newBody += StudentInformationToHtml(interestFormSubmission);
-            newBody += @"<p> They have also been informed that their submission was forwarded and been told to expect a follow up within a couple of weeks.</p>
-        <h4> If you have any questions, advice for the process, to add or remove email addresses for your country, or to get a list of previous submissions, please reach out to StudyAbroadScholarshipsWebsite@outlook.com.</h4>
+            newBody += @"<h4> If you have any questions, advice for the process, to add or remove email addresses for your country, or to get a list of previous submissions, please reach out to StudyAbroadScholarshipsWebsite@outlook.com.</h4>
         ";
             newBody += " <p>Thank you for your support of <a href=\"https://studyabroadscholarships.org/\">studyabroadscholarships.org</a>!</p>";
             return newBody;
         }
 
         // This method generates the body of a return email for the person who submitted the form.  It returns the body of the email as a string
-        private string ReturnEmailBodyGenerator(bool isDistrict, List<string> Districts, InterestFormSubmission interestFormSubmission)
+        private string ReturnEmailBodyGenerator(bool isDistrictFound, bool isDistrict, List<string> Districts, InterestFormSubmission interestFormSubmission)
         {
             var responder = "";
-            if (isDistrict)
+            if (isDistrictFound)
             {
-                if (Districts.Count == 1)
+                if (isDistrict)
                 {
-                    responder = "Rotary District " + Districts[0];
+                    if (Districts.Count == 1)
+                    {
+                        responder = " from Rotary District " + Districts[0];
+                    }
+                    else
+                    {
+                        responder = " from Rotary Districts " + string.Join(", ", Districts);
+                    }
                 }
                 else
                 {
-                    responder = "Rotary Districts " + string.Join(", ", Districts);
+                    TextInfo ti = CultureInfo.CurrentCulture.TextInfo;
+                    responder = " from " + ti.ToTitleCase(interestFormSubmission.CountryOfResidence);
                 }
             }
-            else
-            {
-                TextInfo ti = CultureInfo.CurrentCulture.TextInfo;
-                responder = ti.ToTitleCase(interestFormSubmission.CountryOfResidence);
-            }
             var newBody = $@"<h4>Hello {interestFormSubmission.Name},</h4>
-            <div>Thank you for your interest in StudyAbroadScholarships.org.  A representative from rotary youth exchange in {responder} should follow up with you within 2 weeks.</div>
+            <div>Thank you for your interest in StudyAbroadScholarships.org.  A representative from rotary youth exchange{responder} should follow up with you within 2 weeks.</div>
             <div>There is a lot of detail on the website to answer any questions that you may have.  And if you do not hear back from a rotarian within 2 weeks, please reach out to StudyAbroadScholarshipsWebsite@outlook.com.</div>
+        {StudentInformationToHtml(interestFormSubmission)}
             <p>We look forward to hearing from you!</p>
             ";
             return newBody;

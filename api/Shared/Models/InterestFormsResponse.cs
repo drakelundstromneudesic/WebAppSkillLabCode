@@ -4,6 +4,12 @@ namespace Company.Models
 {
     public class InterestFormsResponse
     {
+        public InterestFormsResponse()
+        {
+            CountSuccess = 0;
+            CountError = 0;
+            ErrorSubmissions = new List<ErrorSubmission>();
+        }
         public int CountSuccess { get; set; }
         public int CountError { get; set; }
         public List<ErrorSubmission> ErrorSubmissions { get; set; }
@@ -11,12 +17,12 @@ namespace Company.Models
 
     public class ErrorSubmission
     {
-        public string id { get; set; }
-        public List<string> errors { get; set; }
+        public string Id { get; }
+        public List<string> Errors { get; }
         public ErrorSubmission(string id, List<string> errors)
         {
-            this.id = id;
-            this.errors = errors;
+            this.Id = id;
+            this.Errors = errors;
         }
     }
 }
