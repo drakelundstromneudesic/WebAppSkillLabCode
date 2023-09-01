@@ -13,7 +13,9 @@ namespace Company.Services
     {
         private readonly string _sendingAccountAddress;
         private readonly string _sendingAccountPassword;
-        private readonly string subjectLine = "Rotary Youth Exchange Form Submission";
+        private readonly string forwardingSubjectLine = "Rotary Youth Exchange Form Submission From ";
+        private readonly string submitterSubjectLine = "Rotary Youth Exchange Form Submission ";
+
         private LoggingService _loggingService { get; set; }
 
         public EmailSender(string sendingAccountAddress, string sendingAccountPassword, LoggingService loggingService)
@@ -30,10 +32,10 @@ namespace Company.Services
             {
                 // generate and send email to district representatives
                 var districtEmailBody = DistrictEmailBodyGenerator(districts, interestFormSubmission);
-                var errors = await SendEmailAsync(districtEmailAddresses, subjectLine, districtEmailBody);
+                var errors = await SendEmailAsync(districtEmailAddresses, forwardingSubjectLine + interestFormSubmission.Email, districtEmailBody);
                 // generate and send email to form submitter
                 var returnEmailBody = ReturnEmailBodyGenerator(true, false, districts, interestFormSubmission);
-                errors.AddRange(await SendEmailAsync(new List<string>() { interestFormSubmission.Email }, subjectLine, returnEmailBody));
+                errors.AddRange(await SendEmailAsync(new List<string>() { interestFormSubmission.Email }, submitterSubjectLine, returnEmailBody));
                 return errors;
             }
             catch (Exception e)
@@ -49,10 +51,10 @@ namespace Company.Services
             {
                 // generate and send email to country representatives
                 var countryEmailBody = CountryEmailBodyGenerator(interestFormSubmission);
-                var errors = await SendEmailAsync(countryEmailAddresses, subjectLine, countryEmailBody);
+                var errors = await SendEmailAsync(countryEmailAddresses, forwardingSubjectLine + interestFormSubmission.Email, countryEmailBody);
                 // generate and send email to form submitter
                 var returnEmailBody = ReturnEmailBodyGenerator(true, true, new List<string>(), interestFormSubmission);
-                errors.AddRange(await SendEmailAsync(new List<string>() { interestFormSubmission.Email }, subjectLine, returnEmailBody));
+                errors.AddRange(await SendEmailAsync(new List<string>() { interestFormSubmission.Email }, submitterSubjectLine, returnEmailBody));
                 return errors;
             }
             catch (Exception e)
@@ -76,7 +78,7 @@ namespace Company.Services
                 var errors = await SendEmailAsync(new List<string>() { _sendingAccountAddress }, "District or Country Not Found", notFoundEmailBody);
                 // generate and send email to form submitter
                 var returnEmailBody = ReturnEmailBodyGenerator(false, true, new List<string>(), interestFormSubmission);
-                errors.AddRange(await SendEmailAsync(new List<string>() { interestFormSubmission.Email }, subjectLine, returnEmailBody));
+                errors.AddRange(await SendEmailAsync(new List<string>() { interestFormSubmission.Email }, submitterSubjectLine, returnEmailBody));
                 return errors;
             }
             catch (Exception e)
@@ -167,12 +169,10 @@ namespace Company.Services
         // This method converts the submission information into a string
         private string StudentInformationToHtml(InterestFormSubmission interestFormSubmission)
         {
-            var goingInterest = interestFormSubmission.IsInterestedOutboundStudent ? "yes" : "no";
-            var hostingInterest = interestFormSubmission.IsInterestedInHosting ? "yes" : "no";
             return $@"<h3>Here is the information from the form submission:</h3>
         <div><b>Name:</b> {interestFormSubmission.Name}</div>
-        <div><b>Interested in going on exchange:</b> {goingInterest}</div>
-        <div><b>Interested in hosting:</b> {hostingInterest}</div>
+        <div><b>Interested in going on exchange:</b> {interestFormSubmission.IsInterestedOutboundStudent}</div>
+        <div><b>Interested in hosting:</b> {interestFormSubmission.IsInterestedInHosting}</div>
         <div><b>Age:</b> {interestFormSubmission.Age}</div>
         <div><b>Gender:</b> {interestFormSubmission.Gender}</div>
         <div><b>Email:</b> {interestFormSubmission.Email}</div>

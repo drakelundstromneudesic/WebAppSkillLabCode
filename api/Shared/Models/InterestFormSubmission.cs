@@ -7,8 +7,8 @@ namespace Company.Models
     {
         public string id { get; set; }
         public string Type { get; set; }
-        public bool IsInterestedOutboundStudent { get; set; }
-        public bool IsInterestedInHosting { get; set; }
+        public string IsInterestedOutboundStudent { get; set; }
+        public string IsInterestedInHosting { get; set; }
         public string SubmissionQuestion { get; set; }
         public string Name { get; set; }
         public string Age { get; set; }
@@ -37,10 +37,11 @@ namespace Company.Models
         {
             Errors.AddRange(errorMessage);
         }
-        public InterestFormSubmission(bool isInterestedOutboundStudent, bool isInterestedInHosting, string submissionQuestion, string name, string age, string gender, string email, string phone, string countryOfResidence, string state, string city, string zipcode, string countryChoiceOne, string countryChoiceTwo, string countryChoiceThree, string countryChoiceFour)
+        public InterestFormSubmission(string isInterestedOutboundStudent, string isInterestedInHosting, string submissionQuestion, string name, string age, string gender, string email, string phone, string countryOfResidence, string state, string city, string zipcode, string countryChoiceOne, string countryChoiceTwo, string countryChoiceThree, string countryChoiceFour)
         {
-            this.IsInterestedOutboundStudent = isInterestedOutboundStudent;
-            this.IsInterestedInHosting = isInterestedInHosting;
+            this.Type = "InterestFormSubmission";
+            this.IsInterestedOutboundStudent = isInterestedOutboundStudent.Trim().ToLower();
+            this.IsInterestedInHosting = isInterestedInHosting.Trim().ToLower();
             this.SubmissionQuestion = submissionQuestion.Trim();
             this.Name = name.Trim();
             this.Age = age.Trim();
