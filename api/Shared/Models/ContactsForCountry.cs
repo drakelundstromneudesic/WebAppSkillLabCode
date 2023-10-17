@@ -9,13 +9,15 @@ namespace Company.Models
         public string Type { get; set; }
         public string Country { get; set; }
         public List<string> EmailAddresses { get; set; }
+        public bool IsCertified { get; set; }
 
-        public ContactsForCountry(string country, List<string> emailAddresses)
+        public ContactsForCountry(string country, List<string> emailAddresses, bool IsCertified)
         {
             this.id = Guid.NewGuid().ToString();
             this.Type = "ContactsForCountry";
             this.Country = country;
             this.EmailAddresses = emailAddresses;
+            this.IsCertified = IsCertified;
         }
     }
 }
